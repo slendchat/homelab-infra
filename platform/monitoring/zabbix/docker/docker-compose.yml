@@ -1,0 +1,51 @@
+services:
+  zabbix-postgresql-server:
+    image: postgres:16
+    container_name: zabbix-postgres
+    restart: unless-stopped
+    shm_size: 128mb
+    env_file:
+      - ../env/.env
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:alpine-trunk
+    container_name: zabbix-server
+    restart: unless-stopped
+    depends_on:
+      - zabbix-postgresql-server
+    env_file:
+      - ../env/.env
+    environment:
+      DB_SERVER_HOST: zabbix-postgresql-server
+    ports:
+      - "10051:10051"
+    volumes:
+      - zabbix-server-data:/var/lib/zabbix
+      - zabbix-snmptraps-data:/var/lib/zabbix/snmptraps
+      - zabbix-export-data:/var/lib/zabbix/export
+
+  zabbix-frontend:
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-trunk
+    container_name: zabbix-frontend
+    restart: unless-stopped
+    depends_on:
+      - zabbix-postgresql-server
+      - zabbix-server
+    env_file:
+      - ../env/.env
+    environment:
+      DB_SERVER_HOST: zabbix-postgresql-server
+      ZBX_SERVER_HOST: zabbix-server
+    ports:
+      - "80:8080"
+    volumes:
+      - zabbix-web-data:/usr/share/zabbix
+
+volumes:
+  postgresql-data:
+  zabbix-server-data:
+  zabbix-snmptraps-data:
+  zabbix-export-data:
+  zabbix-web-data:
